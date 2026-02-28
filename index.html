@@ -161,6 +161,17 @@
   }
   .charts-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 
+  /* FIX: lock chart heights so donut cannot blow up */
+  .chart-fixed {
+    height: 260px;
+    position: relative;
+  }
+  .chart-fixed canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
+
   /* Table */
   .table-wrap {
     background: rgba(255,255,255,0.02);
@@ -288,14 +299,17 @@
   <div class="charts-2col">
     <div class="chart-box">
       <div class="chart-box-label">SPEND BY AD SET</div>
-      <canvas id="spendChart" height="160"></canvas>
+      <div class="chart-fixed">
+        <canvas id="spendChart"></canvas>
+      </div>
     </div>
-   <div class="chart-box">
-  <div class="chart-box-label">IMPRESSIONS SHARE</div>
-  <div style="height:320px;">
-    <canvas id="pieChart"></canvas>
-  </div>
-</div>
+
+    <div class="chart-box">
+      <div class="chart-box-label">IMPRESSIONS SHARE</div>
+      <div class="chart-fixed">
+        <canvas id="pieChart"></canvas>
+      </div>
+    </div>
   </div>
 
   <!-- Table -->
@@ -388,12 +402,12 @@ const METRICS = [
 ];
 
 const INSIGHTS = [
-  { icon:"🧪", title:"Testing Phase Active",  color:"#7C4DFF", body:"Spend is intentionally front-loaded per Dr. Joe's extended testing strategy. This period is for data collection, not direct returns — evaluate performance after the full test window closes." },
+  { icon:"🧪", title:"Testing Phase Active",  color:"#7C4DFF", body:"Spend is intentionally front-loaded per Dr. Joe's extended testing strategy. This period is for data collection, not direct returns. Evaluate performance after the full test window closes." },
   { icon:"🎯", title:"Top Performing Ad Set", color:"#00BFA5", body:'"Cardio & Endurance" is the only ad set generating purchases (1 purchase, $79.99). Consider shifting more budget here once the test window concludes.' },
-  { icon:"📉", title:"Retargeting CTR Gap",   color:"#FF6D00", body:"Retargeting has the lowest CTR (~1.5%) despite being the 2nd highest spend ($528). A creative refresh or audience refinement is worth evaluating post-test." },
-  { icon:"💡", title:"CPM Efficiency",        color:"#00E5FF", body:"Blended CPM is competitive. M/F Sports has high impression volume (8,696) but near-zero clicks — review ad creative relevance for this audience." },
+  { icon:"📉", title:"Retargeting CTR Gap",   color:"#FF6D00", body:"Retargeting has the lowest CTR (about 1.5%) despite being the 2nd highest spend ($528). A creative refresh or audience refinement is worth evaluating post-test." },
+  { icon:"💡", title:"CPM Efficiency",        color:"#00E5FF", body:"Blended CPM is competitive. M/F Sports has high impression volume (8,696) but near-zero clicks. Review creative relevance for this audience." },
   { icon:"🔄", title:"Funnel Leakage",        color:"#FF4081", body:"Not all link clicks are converting to landing page views. Check page load speed and mobile UX to recover the remaining drop-off." },
-  { icon:"📅", title:"Spend Paused Feb 4–8",  color:"#FF6D00", body:"Zero spend recorded across all ad sets Feb 4–8. Confirm with client whether this was intentional or a budget/scheduling issue." },
+  { icon:"📅", title:"Spend Paused Feb 4 to 8",  color:"#FF6D00", body:"Zero spend recorded across all ad sets Feb 4 to 8. Confirm with client whether this was intentional or a budget or scheduling issue." },
 ];
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -408,7 +422,6 @@ let customOpen  = false;
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmtN = v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : `${Math.round(v)}`;
 const fmtD = v => `$${v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-const sf   = (n,d,dec=2) => d>0 ? (n/d).toFixed(dec) : '0'.padEnd(dec+2,'0').replace('0','0.').substring(0,dec+2);
 
 function filteredData() {
   return DAILY_DATA.filter(d => d.date >= startDate && d.date <= endDate);
@@ -477,12 +490,12 @@ function renderKPIs(t) {
   const cards = [
     { label:'Total Spend',   value:fmtD(t.spend),          sub:'USD invested',         accent:'#00E5FF' },
     { label:'Impressions',   value:fmtN(t.impressions),    sub:`CPM $${cpm}`,           accent:'#7C4DFF' },
-    { label:'Reach',         value:fmtN(t.reach),          sub:`Frequency ${freq}×`,   accent:'#00BFA5' },
+    { label:'Reach',         value:fmtN(t.reach),          sub:`Frequency ${freq}x`,   accent:'#00BFA5' },
     { label:'Link Clicks',   value:fmtN(t.clicks),         sub:`CTR ${ctr}%`,           accent:'#FF6D00' },
     { label:'CPC',           value:`$${cpc}`,              sub:'per link click',        accent:'#FF4081' },
     { label:'Landing Views', value:fmtN(t.lpv),            sub:`${lpvRate}% of clicks`, accent:'#00E5FF' },
     { label:'Purchases',     value:`${t.purchases}`,       sub:`$${t.rev.toFixed(2)} revenue`, accent:'#00BFA5' },
-    { label:'ROAS',          value:`${roas}×`,             sub:'return on ad spend',   accent:'#7C4DFF' },
+    { label:'ROAS',          value:`${roas}x`,             sub:'return on ad spend',   accent:'#7C4DFF' },
   ];
 
   document.getElementById('kpiGrid').innerHTML = cards.map(c => `
@@ -590,6 +603,7 @@ function renderAdSetCharts() {
     options: {
       indexAxis: 'y',
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -620,8 +634,10 @@ function renderAdSetCharts() {
       }]
     },
     options: {
-  responsive: true,
-  maintainAspectRatio: false,
+      responsive: true,
+      maintainAspectRatio: false,
+      radius: '78%',
+      cutout: '70%',
       plugins: {
         legend: { position:'bottom', labels:{ color:'#777', font:{family:'Space Mono',size:11}, boxWidth:8, padding:12 } },
         tooltip: {
@@ -650,7 +666,7 @@ function renderTable() {
       <td style="color:#FF6D00">${rCtr}%</td>
       <td>${rCpc !== '—' ? '$'+rCpc : '—'}</td>
       <td style="color:${pColor}">${a.purchases}</td>
-      <td style="color:${pColor}">${rRoas}×</td>
+      <td style="color:${pColor}">${rRoas}x</td>
     </tr>`;
   }).join('');
 }
@@ -699,8 +715,8 @@ function renderAll() {
   const rows = filteredData();
   const t = computeTotals(rows);
 
-  document.getElementById('headerDate').textContent = `${startDate} → ${endDate} · Ad Set Level`;
-  document.getElementById('footerRange').textContent = `${startDate} – ${endDate} · TOTAL SPEND $1,783.22`;
+  document.getElementById('headerDate').textContent = `${startDate} -> ${endDate} · Ad Set Level`;
+  document.getElementById('footerRange').textContent = `${startDate} - ${endDate} · TOTAL SPEND $1,783.22`;
 
   renderKPIs(t);
   renderMetricBar();
