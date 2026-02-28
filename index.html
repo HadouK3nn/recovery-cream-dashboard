@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #080A0F; color: #fff; font-family: 'Space Mono', monospace; }
@@ -161,15 +162,43 @@
   }
   .charts-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 
-  /* FIX: lock chart heights so donut cannot blow up */
-  .chart-fixed {
-    height: 260px;
-    position: relative;
+  /* Donut fills card better */
+  .donut-layout{
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: 10px;
+    height: 320px; /* controls the full donut card content height */
   }
-  .chart-fixed canvas {
+  .donut-canvas{
+    position: relative;
+    min-height: 0;
+  }
+  .donut-canvas canvas{
     width: 100% !important;
     height: 100% !important;
     display: block;
+  }
+  .donut-legend{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 14px;
+    padding-bottom: 2px;
+    color: #777;
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+  .donut-legend .item{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .donut-legend .swatch{
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex: 0 0 auto;
   }
 
   /* Table */
@@ -245,6 +274,7 @@
   }
 </style>
 </head>
+
 <body>
 
 <!-- Header -->
@@ -271,6 +301,7 @@
     <button class="preset-btn active-cyan" id="btn-all" onclick="applyPreset(null)">All Time</button>
     <button class="preset-btn" id="btn-custom" onclick="toggleCustom()">Custom ▼</button>
   </div>
+
   <div class="custom-panel" id="customPanel">
     <div>
       <label>FROM</label>
@@ -297,19 +328,25 @@
   <!-- Ad Set Charts -->
   <div class="section-title">Ad Set Breakdown</div>
   <div class="charts-2col">
+
     <div class="chart-box">
       <div class="chart-box-label">SPEND BY AD SET</div>
-      <div class="chart-fixed">
+      <div style="height:320px;">
         <canvas id="spendChart"></canvas>
       </div>
     </div>
 
     <div class="chart-box">
       <div class="chart-box-label">IMPRESSIONS SHARE</div>
-      <div class="chart-fixed">
-        <canvas id="pieChart"></canvas>
+
+      <div class="donut-layout">
+        <div class="donut-canvas">
+          <canvas id="pieChart"></canvas>
+        </div>
+        <div class="donut-legend" id="pieLegend"></div>
       </div>
     </div>
+
   </div>
 
   <!-- Table -->
@@ -349,7 +386,7 @@
 </div>
 
 <script>
-// ── Data ──────────────────────────────────────────────────────────────────────
+/* Data */
 const DAILY_DATA = [
   { date:"2025-12-27", spend:0.03,   impressions:2,    clicks:0,   reach:2,    lpv:0,  purchases:0, rev:0 },
   { date:"2025-12-29", spend:0.56,   impressions:40,   clicks:8,   reach:35,   lpv:1,  purchases:0, rev:0 },
@@ -404,13 +441,13 @@ const METRICS = [
 const INSIGHTS = [
   { icon:"🧪", title:"Testing Phase Active",  color:"#7C4DFF", body:"Spend is intentionally front-loaded per Dr. Joe's extended testing strategy. This period is for data collection, not direct returns. Evaluate performance after the full test window closes." },
   { icon:"🎯", title:"Top Performing Ad Set", color:"#00BFA5", body:'"Cardio & Endurance" is the only ad set generating purchases (1 purchase, $79.99). Consider shifting more budget here once the test window concludes.' },
-  { icon:"📉", title:"Retargeting CTR Gap",   color:"#FF6D00", body:"Retargeting has the lowest CTR (about 1.5%) despite being the 2nd highest spend ($528). A creative refresh or audience refinement is worth evaluating post-test." },
-  { icon:"💡", title:"CPM Efficiency",        color:"#00E5FF", body:"Blended CPM is competitive. M/F Sports has high impression volume (8,696) but near-zero clicks. Review creative relevance for this audience." },
-  { icon:"🔄", title:"Funnel Leakage",        color:"#FF4081", body:"Not all link clicks are converting to landing page views. Check page load speed and mobile UX to recover the remaining drop-off." },
+  { icon:"📉", title:"Retargeting CTR Gap",   color:"#FF6D00", body:"Retargeting has the lowest CTR (about 1.5%) despite being the 2nd highest spend ($528). A creative refresh or audience refinement is worth evaluating post test." },
+  { icon:"💡", title:"CPM Efficiency",        color:"#00E5FF", body:"Blended CPM is competitive. M/F Sports has high impression volume (8,696) but near zero clicks. Review ad creative relevance for this audience." },
+  { icon:"🔄", title:"Funnel Leakage",        color:"#FF4081", body:"Not all link clicks are converting to landing page views. Check page load speed and mobile UX to recover the remaining drop off." },
   { icon:"📅", title:"Spend Paused Feb 4 to 8",  color:"#FF6D00", body:"Zero spend recorded across all ad sets Feb 4 to 8. Confirm with client whether this was intentional or a budget or scheduling issue." },
 ];
 
-// ── State ─────────────────────────────────────────────────────────────────────
+/* State */
 let startDate   = MIN_DATE;
 let endDate     = MAX_DATE;
 let activeMetric = "spend";
@@ -419,7 +456,7 @@ let spendChart  = null;
 let pieChart    = null;
 let customOpen  = false;
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+/* Helpers */
 const fmtN = v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : `${Math.round(v)}`;
 const fmtD = v => `$${v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 
@@ -439,11 +476,12 @@ function computeTotals(rows) {
   }), {spend:0,impressions:0,clicks:0,reach:0,lpv:0,purchases:0,rev:0});
 }
 
-// ── Date preset ───────────────────────────────────────────────────────────────
+/* Date preset */
 function applyPreset(days) {
   document.querySelectorAll('.preset-btn').forEach(b => {
     b.classList.remove('active-cyan','active-purple');
   });
+
   if (days === null) {
     startDate = MIN_DATE; endDate = MAX_DATE;
     document.getElementById('btn-all').classList.add('active-cyan');
@@ -453,11 +491,13 @@ function applyPreset(days) {
     const s = cut.toISOString().slice(0,10);
     startDate = s < MIN_DATE ? MIN_DATE : s;
     endDate = MAX_DATE;
+
     const labels = {7:'Last 7 Days',14:'Last 14 Days',30:'Last 30 Days'};
     document.querySelectorAll('.preset-btn').forEach(b => {
       if (b.textContent === labels[days]) b.classList.add('active-cyan');
     });
   }
+
   customOpen = false;
   document.getElementById('customPanel').classList.remove('open');
   renderAll();
@@ -478,7 +518,7 @@ function applyCustom() {
   renderAll();
 }
 
-// ── Render KPIs ───────────────────────────────────────────────────────────────
+/* Render KPIs */
 function renderKPIs(t) {
   const ctr     = t.impressions > 0 ? ((t.clicks/t.impressions)*100).toFixed(2) : '0.00';
   const cpm     = t.impressions > 0 ? ((t.spend/t.impressions)*1000).toFixed(2) : '0.00';
@@ -507,7 +547,7 @@ function renderKPIs(t) {
   `).join('');
 }
 
-// ── Render metric buttons ─────────────────────────────────────────────────────
+/* Render metric buttons */
 function renderMetricBar() {
   document.getElementById('metricBar').innerHTML = METRICS.map(m => `
     <button class="metric-btn" id="mbtn-${m.key}" onclick="selectMetric('${m.key}')"
@@ -522,7 +562,7 @@ function selectMetric(key) {
   updateTrendChart();
 }
 
-// ── Trend chart ───────────────────────────────────────────────────────────────
+/* Trend chart */
 function buildChartData() {
   const rows = filteredData();
   return rows.map(d => {
@@ -537,6 +577,7 @@ function updateTrendChart() {
   const data = buildChartData();
   const m = METRICS.find(x => x.key === activeMetric);
   if (trendChart) trendChart.destroy();
+
   const ctx = document.getElementById('trendChart').getContext('2d');
   trendChart = new Chart(ctx, {
     type: 'line',
@@ -567,11 +608,11 @@ function updateTrendChart() {
           titleFont: { family: 'Space Mono', size: 12 },
           bodyFont:  { family: 'Space Mono', size: 13 },
           callbacks: {
-            label: ctx => {
-              const v = ctx.parsed.y;
+            label: c => {
+              const v = c.parsed.y;
               const key = activeMetric.toLowerCase();
-              return (key.includes('spend')||key.includes('cpm')||key.includes('cpc'))
-                ? `${m.label}: $${v.toFixed(2)}` : `${m.label}: ${v}`;
+              const isMoney = (key.includes('spend') || key.includes('cpm') || key.includes('cpc'));
+              return isMoney ? `${m.label}: $${v.toFixed(2)}` : `${m.label}: ${v}`;
             }
           }
         }
@@ -584,7 +625,7 @@ function updateTrendChart() {
   });
 }
 
-// ── Ad set charts ─────────────────────────────────────────────────────────────
+/* Ad set charts */
 function renderAdSetCharts() {
   if (spendChart) spendChart.destroy();
   if (pieChart) pieChart.destroy();
@@ -604,18 +645,41 @@ function renderAdSetCharts() {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
+
+      /* Fix cropped Y labels */
+      layout: { padding: { left: 110, right: 10, top: 0, bottom: 0 } },
+
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#0D0F14', borderColor:'rgba(255,255,255,0.15)', borderWidth:1,
-          titleColor:'#888', bodyColor:'#00E5FF',
-          titleFont:{family:'Space Mono',size:12}, bodyFont:{family:'Space Mono',size:13},
+          backgroundColor: '#0D0F14',
+          borderColor:'rgba(255,255,255,0.15)',
+          borderWidth:1,
+          titleColor:'#888',
+          bodyColor:'#00E5FF',
+          titleFont:{family:'Space Mono',size:12},
+          bodyFont:{family:'Space Mono',size:13},
           callbacks: { label: ctx => `Spend: $${ctx.parsed.x.toFixed(2)}` }
         }
       },
       scales: {
-        x: { grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#555',font:{family:'Space Mono',size:11},callback:v=>`$${v}`} },
-        y: { grid:{display:false}, ticks:{color:'#777',font:{family:'Space Mono',size:11}} }
+        x: {
+          grid:{color:'rgba(255,255,255,0.04)'},
+          ticks:{
+            color:'#555',
+            font:{family:'Space Mono',size:11},
+            callback:v=>`$${v}`
+          }
+        },
+        y: {
+          grid:{display:false},
+          ticks:{
+            color:'#777',
+            font:{family:'Space Mono',size:11},
+            autoSkip: false,
+            padding: 10
+          }
+        }
       }
     }
   });
@@ -636,28 +700,45 @@ function renderAdSetCharts() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      radius: '78%',
-      cutout: '70%',
+
+      /* Fill the donut card better */
+      radius: '92%',
+      cutout: '62%',
+      layout: { padding: { top: 6, left: 6, right: 6, bottom: 0 } },
+
       plugins: {
-        legend: { position:'bottom', labels:{ color:'#777', font:{family:'Space Mono',size:11}, boxWidth:8, padding:12 } },
+        legend: { display: false },
         tooltip: {
-          backgroundColor:'#0D0F14', borderColor:'rgba(255,255,255,0.15)', borderWidth:1,
-          titleColor:'#888', bodyColor:'#ccc',
-          titleFont:{family:'Space Mono',size:12}, bodyFont:{family:'Space Mono',size:13},
+          backgroundColor:'#0D0F14',
+          borderColor:'rgba(255,255,255,0.15)',
+          borderWidth:1,
+          titleColor:'#888',
+          bodyColor:'#ccc',
+          titleFont:{family:'Space Mono',size:12},
+          bodyFont:{family:'Space Mono',size:13},
           callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed.toLocaleString()} impr.` }
         }
       }
     }
   });
+
+  /* Custom legend (does not steal chart space) */
+  document.getElementById('pieLegend').innerHTML = AD_SETS.map((a,i)=>`
+    <div class="item">
+      <span class="swatch" style="background:${COLORS[i]}"></span>
+      <span>${a.name}</span>
+    </div>
+  `).join('');
 }
 
-// ── Table ─────────────────────────────────────────────────────────────────────
+/* Table */
 function renderTable() {
   document.getElementById('adsetTable').innerHTML = AD_SETS.map((a, i) => {
     const rCtr  = a.impressions > 0 ? ((a.clicks/a.impressions)*100).toFixed(2) : '0.00';
     const rCpc  = a.clicks > 0 ? (a.spend/a.clicks).toFixed(2) : '—';
     const rRoas = a.spend > 0 ? (a.rev/a.spend).toFixed(3) : '0.000';
     const pColor = a.purchases > 0 ? '#00BFA5' : '#444';
+
     return `<tr>
       <td><div class="td-name"><div class="color-dot" style="background:${COLORS[i]}"></div>${a.name}</div></td>
       <td style="color:#00E5FF">$${a.spend.toFixed(2)}</td>
@@ -671,7 +752,7 @@ function renderTable() {
   }).join('');
 }
 
-// ── Funnel ────────────────────────────────────────────────────────────────────
+/* Funnel */
 function renderFunnel(t) {
   const steps = [
     { label:'Reach',             value:t.reach,       color:'#00E5FF' },
@@ -680,7 +761,9 @@ function renderFunnel(t) {
     { label:'Landing Page Views',value:t.lpv,         color:'#FF6D00' },
     { label:'Purchases',         value:t.purchases,   color:'#FF4081' },
   ];
+
   const base = steps[0].value || 1;
+
   document.getElementById('funnelBox').innerHTML = steps.map(s => {
     const pct = ((s.value/base)*100).toFixed(1);
     return `
@@ -699,7 +782,7 @@ function renderFunnel(t) {
   }).join('');
 }
 
-// ── Insights ──────────────────────────────────────────────────────────────────
+/* Insights */
 function renderInsights() {
   document.getElementById('insightsGrid').innerHTML = INSIGHTS.map(ins => `
     <div class="insight-card" style="border:1px solid ${ins.color}22;border-left:4px solid ${ins.color}">
@@ -710,12 +793,12 @@ function renderInsights() {
   `).join('');
 }
 
-// ── Main render ───────────────────────────────────────────────────────────────
+/* Main render */
 function renderAll() {
   const rows = filteredData();
   const t = computeTotals(rows);
 
-  document.getElementById('headerDate').textContent = `${startDate} -> ${endDate} · Ad Set Level`;
+  document.getElementById('headerDate').textContent = `${startDate} → ${endDate} · Ad Set Level`;
   document.getElementById('footerRange').textContent = `${startDate} - ${endDate} · TOTAL SPEND $1,783.22`;
 
   renderKPIs(t);
@@ -724,11 +807,12 @@ function renderAll() {
   renderFunnel(t);
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+/* Init */
 renderAdSetCharts();
 renderTable();
 renderInsights();
 renderAll();
 </script>
+
 </body>
 </html>
