@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Recovery Cream · Meta Ads Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #080A0F; color: #fff; font-family: 'Space Mono', monospace; }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+  /* Layout */
+  .header {
+    background: rgba(8,10,15,0.94);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 22px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    backdrop-filter: blur(16px);
+  }
+  .header-left { display: flex; flex-direction: column; gap: 5px; }
+  .header-brand { display: flex; align-items: center; gap: 12px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #00E5FF; box-shadow: 0 0 12px #00E5FF; flex-shrink: 0; }
+  .brand-name { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; letter-spacing: 1px; }
+  .brand-sub { font-size: 12px; color: #444; letter-spacing: 2px; }
+  .header-date { font-size: 12px; color: #444; letter-spacing: 1px; }
+  .live-badge {
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.22);
+    border-radius: 24px;
+    padding: 7px 18px;
+    font-size: 12px;
+    color: #00E5FF;
+    letter-spacing: 2px;
+  }
+
+  .content { padding: 0 40px 80px; }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #666;
+    margin: 40px 0 18px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+
+  /* Date range */
+  .preset-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .preset-btn {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #666;
+    border-radius: 24px;
+    padding: 8px 20px;
+    font-size: 13px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Space Mono', monospace;
+  }
+  .preset-btn.active-cyan  { background: rgba(0,229,255,0.12);  border-color: #00E5FF; color: #00E5FF; }
+  .preset-btn.active-purple{ background: rgba(124,77,255,0.12); border-color: #7C4DFF; color: #7C4DFF; }
+  .custom-panel {
+    display: none;
+    margin-top: 14px;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+  .custom-panel.open { display: flex; }
+  .custom-panel label { font-size: 12px; color: #666; letter-spacing: 2px; display: block; margin-bottom: 6px; }
+  .custom-panel input[type="date"] {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 8px;
+    color: #ddd;
+    padding: 9px 14px;
+    font-size: 14px;
+    font-family: 'Space Mono', monospace;
+    outline: none;
+    color-scheme: dark;
+  }
+  .apply-btn {
+    background: #7C4DFF;
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    padding: 10px 24px;
+    font-size: 13px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* KPI Grid */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .kpi-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 14px;
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: transform 0.18s, box-shadow 0.18s;
+    cursor: default;
+    min-width: 0;
+  }
+  .kpi-card:hover { transform: translateY(-3px); }
+  .kpi-label { font-size: 12px; letter-spacing: 2px; color: #777; text-transform: uppercase; }
+  .kpi-value { font-family: 'Syne', sans-serif; font-size: 30px; font-weight: 800; color: #fff; letter-spacing: -1px; line-height: 1.1; }
+  .kpi-sub   { font-size: 13px; }
+
+  /* Metric toggle */
+  .metric-bar { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .metric-btn {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #666;
+    border-radius: 24px;
+    padding: 8px 20px;
+    font-size: 13px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* Chart containers */
+  .chart-box {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 28px 18px 16px;
+  }
+  .chart-box-label {
+    font-size: 12px;
+    color: #555;
+    letter-spacing: 2px;
+    margin-bottom: 18px;
+  }
+  .charts-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+
+  /* Table */
+  .table-wrap {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { border-bottom: 1px solid rgba(255,255,255,0.07); }
+  th {
+    padding: 14px 18px;
+    color: #555;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    font-weight: 400;
+    text-align: right;
+  }
+  th:first-child { text-align: left; }
+  tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.12s; }
+  tbody tr:hover { background: rgba(255,255,255,0.03); }
+  td { padding: 14px 18px; text-align: right; color: #999; }
+  td:first-child { text-align: left; }
+  .td-name { display: flex; align-items: center; gap: 10px; color: #ccc; }
+  .color-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Funnel */
+  .funnel-box {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 28px 32px;
+  }
+  .funnel-row { margin-bottom: 20px; }
+  .funnel-labels { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+  .funnel-track { height: 7px; background: rgba(255,255,255,0.05); border-radius: 4px; }
+  .funnel-bar { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+
+  /* Insights */
+  .insights-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .insight-card {
+    background: rgba(255,255,255,0.02);
+    border-radius: 12px;
+    padding: 20px 22px;
+  }
+  .insight-icon { font-size: 22px; margin-bottom: 10px; }
+  .insight-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.3px; }
+  .insight-body { font-size: 13px; color: #666; line-height: 1.75; }
+
+  /* Footer */
+  .footer {
+    margin-top: 56px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding-top: 18px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #333;
+    letter-spacing: 1px;
+  }
+
+  @media (max-width: 900px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-2col { grid-template-columns: 1fr; }
+    .insights-grid { grid-template-columns: 1fr; }
+    .content { padding: 0 20px 60px; }
+    .header { padding: 18px 20px; }
+  }
+  @media (max-width: 500px) {
+    .kpi-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-brand">
+      <div class="dot"></div>
+      <span class="brand-name">Recovery Cream</span>
+      <span class="brand-sub">/ META ADS INTELLIGENCE</span>
+    </div>
+    <div class="header-date" id="headerDate">Loading...</div>
+  </div>
+  <div class="live-badge">LIVE REPORT</div>
+</div>
+
+<div class="content">
+
+  <!-- Date Range -->
+  <div class="section-title">Date Range</div>
+  <div class="preset-bar">
+    <button class="preset-btn" onclick="applyPreset(7)">Last 7 Days</button>
+    <button class="preset-btn" onclick="applyPreset(14)">Last 14 Days</button>
+    <button class="preset-btn" onclick="applyPreset(30)">Last 30 Days</button>
+    <button class="preset-btn active-cyan" id="btn-all" onclick="applyPreset(null)">All Time</button>
+    <button class="preset-btn" id="btn-custom" onclick="toggleCustom()">Custom ▼</button>
+  </div>
+  <div class="custom-panel" id="customPanel">
+    <div>
+      <label>FROM</label>
+      <input type="date" id="fromDate" value="2025-12-27" min="2025-12-27" max="2026-02-03" />
+    </div>
+    <div>
+      <label>TO</label>
+      <input type="date" id="toDate" value="2026-02-03" min="2025-12-27" max="2026-02-03" />
+    </div>
+    <button class="apply-btn" onclick="applyCustom()">Apply</button>
+  </div>
+
+  <!-- KPIs -->
+  <div class="section-title">Campaign Summary</div>
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <!-- Trend Chart -->
+  <div class="section-title">Daily Performance Trend</div>
+  <div class="metric-bar" id="metricBar"></div>
+  <div class="chart-box">
+    <canvas id="trendChart" height="100"></canvas>
+  </div>
+
+  <!-- Ad Set Charts -->
+  <div class="section-title">Ad Set Breakdown</div>
+  <div class="charts-2col">
+    <div class="chart-box">
+      <div class="chart-box-label">SPEND BY AD SET</div>
+      <canvas id="spendChart" height="160"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="chart-box-label">IMPRESSIONS SHARE</div>
+      <canvas id="pieChart" height="160"></canvas>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="section-title">Ad Set Performance Table</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left">Ad Set</th>
+          <th>Spend</th>
+          <th>Impressions</th>
+          <th>Clicks</th>
+          <th>CTR</th>
+          <th>CPC</th>
+          <th>Purchases</th>
+          <th>ROAS</th>
+        </tr>
+      </thead>
+      <tbody id="adsetTable"></tbody>
+    </table>
+  </div>
+
+  <!-- Funnel -->
+  <div class="section-title">Conversion Funnel</div>
+  <div class="funnel-box" id="funnelBox"></div>
+
+  <!-- Insights -->
+  <div class="section-title">Strategic Insights</div>
+  <div class="insights-grid" id="insightsGrid"></div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>RECOVERY CREAM · META ADS DASHBOARD</span>
+    <span id="footerRange"></span>
+  </div>
+
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const DAILY_DATA = [
+  { date:"2025-12-27", spend:0.03,   impressions:2,    clicks:0,   reach:2,    lpv:0,  purchases:0, rev:0 },
+  { date:"2025-12-29", spend:0.56,   impressions:40,   clicks:8,   reach:35,   lpv:1,  purchases:0, rev:0 },
+  { date:"2025-12-30", spend:1.11,   impressions:32,   clicks:2,   reach:32,   lpv:2,  purchases:0, rev:0 },
+  { date:"2025-12-31", spend:0.81,   impressions:5,    clicks:1,   reach:5,    lpv:1,  purchases:0, rev:0 },
+  { date:"2026-01-05", spend:0.03,   impressions:5,    clicks:0,   reach:5,    lpv:0,  purchases:0, rev:0 },
+  { date:"2026-01-06", spend:4.18,   impressions:268,  clicks:0,   reach:263,  lpv:0,  purchases:0, rev:0 },
+  { date:"2026-01-07", spend:4.95,   impressions:671,  clicks:0,   reach:667,  lpv:0,  purchases:0, rev:0 },
+  { date:"2026-01-08", spend:5.22,   impressions:666,  clicks:9,   reach:647,  lpv:8,  purchases:0, rev:0 },
+  { date:"2026-01-09", spend:189.39, impressions:4335, clicks:106, reach:4202, lpv:95, purchases:0, rev:0 },
+  { date:"2026-01-10", spend:34.17,  impressions:370,  clicks:11,  reach:367,  lpv:9,  purchases:0, rev:0 },
+  { date:"2026-01-11", spend:64.35,  impressions:2808, clicks:56,  reach:2695, lpv:49, purchases:0, rev:0 },
+  { date:"2026-01-12", spend:14.26,  impressions:68,   clicks:4,   reach:68,   lpv:4,  purchases:0, rev:0 },
+  { date:"2026-01-19", spend:68.52,  impressions:3198, clicks:58,  reach:3063, lpv:49, purchases:0, rev:0 },
+  { date:"2026-01-20", spend:76.10,  impressions:2985, clicks:75,  reach:2632, lpv:68, purchases:0, rev:0 },
+  { date:"2026-01-21", spend:58.10,  impressions:2547, clicks:80,  reach:2373, lpv:75, purchases:0, rev:0 },
+  { date:"2026-01-22", spend:75.48,  impressions:2573, clicks:91,  reach:2422, lpv:84, purchases:0, rev:0 },
+  { date:"2026-01-23", spend:52.48,  impressions:679,  clicks:31,  reach:637,  lpv:31, purchases:0, rev:0 },
+  { date:"2026-01-25", spend:167.97, impressions:3010, clicks:80,  reach:2821, lpv:78, purchases:0, rev:0 },
+  { date:"2026-01-26", spend:155.93, impressions:2794, clicks:76,  reach:2624, lpv:74, purchases:0, rev:0 },
+  { date:"2026-01-27", spend:116.73, impressions:2510, clicks:80,  reach:2388, lpv:71, purchases:0, rev:0 },
+  { date:"2026-01-28", spend:117.36, impressions:2868, clicks:91,  reach:2727, lpv:82, purchases:0, rev:0 },
+  { date:"2026-01-29", spend:119.63, impressions:2763, clicks:103, reach:2641, lpv:89, purchases:0, rev:0 },
+  { date:"2026-01-30", spend:95.17,  impressions:2993, clicks:77,  reach:2829, lpv:69, purchases:0, rev:0 },
+  { date:"2026-01-31", spend:64.89,  impressions:3445, clicks:77,  reach:3325, lpv:70, purchases:0, rev:0 },
+  { date:"2026-02-01", spend:149.33, impressions:3449, clicks:103, reach:3318, lpv:92, purchases:0, rev:0 },
+  { date:"2026-02-02", spend:132.28, impressions:3568, clicks:104, reach:3403, lpv:91, purchases:1, rev:79.99 },
+  { date:"2026-02-03", spend:14.19,  impressions:596,  clicks:15,  reach:584,  lpv:17, purchases:0, rev:0 },
+];
+
+const AD_SETS = [
+  { name:"Everyday Athlete",   spend:540.91, impressions:12371, clicks:430, purchases:0, rev:0 },
+  { name:"Retargeting",        spend:528.63, impressions:9302,  clicks:140, purchases:0, rev:0 },
+  { name:"Cardio & Endurance", spend:521.53, impressions:8626,  clicks:370, purchases:1, rev:79.99 },
+  { name:"Sports & Lifestyle", spend:132.10, impressions:10253, clicks:392, purchases:0, rev:0 },
+  { name:"M/F Sports",         spend:60.05,  impressions:8696,  clicks:6,   purchases:0, rev:0 },
+];
+
+const COLORS   = ["#00E5FF","#00BFA5","#7C4DFF","#FF6D00","#FF4081"];
+const MIN_DATE = DAILY_DATA[0].date;
+const MAX_DATE = DAILY_DATA[DAILY_DATA.length-1].date;
+
+const METRICS = [
+  { key:"spend",       label:"Spend ($)",   color:"#00E5FF" },
+  { key:"impressions", label:"Impressions", color:"#7C4DFF" },
+  { key:"clicks",      label:"Clicks",      color:"#00BFA5" },
+  { key:"ctr",         label:"CTR %",       color:"#FF6D00" },
+  { key:"cpm",         label:"CPM ($)",     color:"#FF4081" },
+  { key:"cpc",         label:"CPC ($)",     color:"#FFEB3B" },
+];
+
+const INSIGHTS = [
+  { icon:"🧪", title:"Testing Phase Active",  color:"#7C4DFF", body:"Spend is intentionally front-loaded per Dr. Joe's extended testing strategy. This period is for data collection, not direct returns — evaluate performance after the full test window closes." },
+  { icon:"🎯", title:"Top Performing Ad Set", color:"#00BFA5", body:'"Cardio & Endurance" is the only ad set generating purchases (1 purchase, $79.99). Consider shifting more budget here once the test window concludes.' },
+  { icon:"📉", title:"Retargeting CTR Gap",   color:"#FF6D00", body:"Retargeting has the lowest CTR (~1.5%) despite being the 2nd highest spend ($528). A creative refresh or audience refinement is worth evaluating post-test." },
+  { icon:"💡", title:"CPM Efficiency",        color:"#00E5FF", body:"Blended CPM is competitive. M/F Sports has high impression volume (8,696) but near-zero clicks — review ad creative relevance for this audience." },
+  { icon:"🔄", title:"Funnel Leakage",        color:"#FF4081", body:"Not all link clicks are converting to landing page views. Check page load speed and mobile UX to recover the remaining drop-off." },
+  { icon:"📅", title:"Spend Paused Feb 4–8",  color:"#FF6D00", body:"Zero spend recorded across all ad sets Feb 4–8. Confirm with client whether this was intentional or a budget/scheduling issue." },
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let startDate   = MIN_DATE;
+let endDate     = MAX_DATE;
+let activeMetric = "spend";
+let trendChart  = null;
+let spendChart  = null;
+let pieChart    = null;
+let customOpen  = false;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const fmtN = v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : `${Math.round(v)}`;
+const fmtD = v => `$${v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const sf   = (n,d,dec=2) => d>0 ? (n/d).toFixed(dec) : '0'.padEnd(dec+2,'0').replace('0','0.').substring(0,dec+2);
+
+function filteredData() {
+  return DAILY_DATA.filter(d => d.date >= startDate && d.date <= endDate);
+}
+
+function computeTotals(rows) {
+  return rows.reduce((a,d) => ({
+    spend:       a.spend       + d.spend,
+    impressions: a.impressions + d.impressions,
+    clicks:      a.clicks      + d.clicks,
+    reach:       a.reach       + d.reach,
+    lpv:         a.lpv         + d.lpv,
+    purchases:   a.purchases   + d.purchases,
+    rev:         a.rev         + d.rev,
+  }), {spend:0,impressions:0,clicks:0,reach:0,lpv:0,purchases:0,rev:0});
+}
+
+// ── Date preset ───────────────────────────────────────────────────────────────
+function applyPreset(days) {
+  document.querySelectorAll('.preset-btn').forEach(b => {
+    b.classList.remove('active-cyan','active-purple');
+  });
+  if (days === null) {
+    startDate = MIN_DATE; endDate = MAX_DATE;
+    document.getElementById('btn-all').classList.add('active-cyan');
+  } else {
+    const end = new Date(MAX_DATE + 'T00:00:00');
+    const cut = new Date(end); cut.setDate(cut.getDate() - days + 1);
+    const s = cut.toISOString().slice(0,10);
+    startDate = s < MIN_DATE ? MIN_DATE : s;
+    endDate = MAX_DATE;
+    const labels = {7:'Last 7 Days',14:'Last 14 Days',30:'Last 30 Days'};
+    document.querySelectorAll('.preset-btn').forEach(b => {
+      if (b.textContent === labels[days]) b.classList.add('active-cyan');
+    });
+  }
+  customOpen = false;
+  document.getElementById('customPanel').classList.remove('open');
+  renderAll();
+}
+
+function toggleCustom() {
+  customOpen = !customOpen;
+  document.getElementById('customPanel').classList.toggle('open', customOpen);
+  document.getElementById('btn-custom').textContent = 'Custom ' + (customOpen ? '▲' : '▼');
+}
+
+function applyCustom() {
+  startDate = document.getElementById('fromDate').value;
+  endDate   = document.getElementById('toDate').value;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active-cyan','active-purple'));
+  document.getElementById('btn-custom').classList.add('active-purple');
+  toggleCustom();
+  renderAll();
+}
+
+// ── Render KPIs ───────────────────────────────────────────────────────────────
+function renderKPIs(t) {
+  const ctr     = t.impressions > 0 ? ((t.clicks/t.impressions)*100).toFixed(2) : '0.00';
+  const cpm     = t.impressions > 0 ? ((t.spend/t.impressions)*1000).toFixed(2) : '0.00';
+  const cpc     = t.clicks > 0      ? (t.spend/t.clicks).toFixed(2) : '0.00';
+  const roas    = t.spend > 0       ? (t.rev/t.spend).toFixed(3) : '0.000';
+  const freq    = t.reach > 0       ? (t.impressions/t.reach).toFixed(2) : '0.00';
+  const lpvRate = t.clicks > 0      ? Math.round((t.lpv/t.clicks)*100) : 0;
+
+  const cards = [
+    { label:'Total Spend',   value:fmtD(t.spend),          sub:'USD invested',         accent:'#00E5FF' },
+    { label:'Impressions',   value:fmtN(t.impressions),    sub:`CPM $${cpm}`,           accent:'#7C4DFF' },
+    { label:'Reach',         value:fmtN(t.reach),          sub:`Frequency ${freq}×`,   accent:'#00BFA5' },
+    { label:'Link Clicks',   value:fmtN(t.clicks),         sub:`CTR ${ctr}%`,           accent:'#FF6D00' },
+    { label:'CPC',           value:`$${cpc}`,              sub:'per link click',        accent:'#FF4081' },
+    { label:'Landing Views', value:fmtN(t.lpv),            sub:`${lpvRate}% of clicks`, accent:'#00E5FF' },
+    { label:'Purchases',     value:`${t.purchases}`,       sub:`$${t.rev.toFixed(2)} revenue`, accent:'#00BFA5' },
+    { label:'ROAS',          value:`${roas}×`,             sub:'return on ad spend',   accent:'#7C4DFF' },
+  ];
+
+  document.getElementById('kpiGrid').innerHTML = cards.map(c => `
+    <div class="kpi-card" style="border-top:3px solid ${c.accent}" onmouseenter="this.style.boxShadow='0 10px 32px ${c.accent}28'" onmouseleave="this.style.boxShadow=''">
+      <span class="kpi-label">${c.label}</span>
+      <span class="kpi-value">${c.value}</span>
+      <span class="kpi-sub" style="color:${c.accent}">${c.sub}</span>
+    </div>
+  `).join('');
+}
+
+// ── Render metric buttons ─────────────────────────────────────────────────────
+function renderMetricBar() {
+  document.getElementById('metricBar').innerHTML = METRICS.map(m => `
+    <button class="metric-btn" id="mbtn-${m.key}" onclick="selectMetric('${m.key}')"
+      style="${activeMetric===m.key ? `background:${m.color}18;border-color:${m.color};color:${m.color}` : ''}"
+    >${m.label}</button>
+  `).join('');
+}
+
+function selectMetric(key) {
+  activeMetric = key;
+  renderMetricBar();
+  updateTrendChart();
+}
+
+// ── Trend chart ───────────────────────────────────────────────────────────────
+function buildChartData() {
+  const rows = filteredData();
+  return rows.map(d => {
+    const ctr = d.impressions > 0 ? +((d.clicks/d.impressions)*100).toFixed(2) : 0;
+    const cpm = d.impressions > 0 ? +((d.spend/d.impressions)*1000).toFixed(2) : 0;
+    const cpc = d.clicks > 0      ? +(d.spend/d.clicks).toFixed(2) : 0;
+    return { label: d.date.slice(5), spend:d.spend, impressions:d.impressions, clicks:d.clicks, ctr, cpm, cpc };
+  });
+}
+
+function updateTrendChart() {
+  const data = buildChartData();
+  const m = METRICS.find(x => x.key === activeMetric);
+  if (trendChart) trendChart.destroy();
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.map(d => d.label),
+      datasets: [{
+        label: m.label,
+        data: data.map(d => d[activeMetric]),
+        borderColor: m.color,
+        backgroundColor: m.color + '15',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        tension: 0.3,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0D0F14',
+          borderColor: 'rgba(255,255,255,0.15)',
+          borderWidth: 1,
+          titleColor: '#888',
+          bodyColor: m.color,
+          titleFont: { family: 'Space Mono', size: 12 },
+          bodyFont:  { family: 'Space Mono', size: 13 },
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              const key = activeMetric.toLowerCase();
+              return (key.includes('spend')||key.includes('cpm')||key.includes('cpc'))
+                ? `${m.label}: $${v.toFixed(2)}` : `${m.label}: ${v}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color:'rgba(255,255,255,0.04)' }, ticks: { color:'#555', font:{ family:'Space Mono', size:12 } } },
+        y: { grid: { color:'rgba(255,255,255,0.04)' }, ticks: { color:'#555', font:{ family:'Space Mono', size:12 } } }
+      }
+    }
+  });
+}
+
+// ── Ad set charts ─────────────────────────────────────────────────────────────
+function renderAdSetCharts() {
+  if (spendChart) spendChart.destroy();
+  if (pieChart) pieChart.destroy();
+
+  const spendCtx = document.getElementById('spendChart').getContext('2d');
+  spendChart = new Chart(spendCtx, {
+    type: 'bar',
+    data: {
+      labels: AD_SETS.map(a => a.name),
+      datasets: [{
+        data: AD_SETS.map(a => a.spend),
+        backgroundColor: COLORS,
+        borderRadius: 5,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0D0F14', borderColor:'rgba(255,255,255,0.15)', borderWidth:1,
+          titleColor:'#888', bodyColor:'#00E5FF',
+          titleFont:{family:'Space Mono',size:12}, bodyFont:{family:'Space Mono',size:13},
+          callbacks: { label: ctx => `Spend: $${ctx.parsed.x.toFixed(2)}` }
+        }
+      },
+      scales: {
+        x: { grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#555',font:{family:'Space Mono',size:11},callback:v=>`$${v}`} },
+        y: { grid:{display:false}, ticks:{color:'#777',font:{family:'Space Mono',size:11}} }
+      }
+    }
+  });
+
+  const pieCtx = document.getElementById('pieChart').getContext('2d');
+  pieChart = new Chart(pieCtx, {
+    type: 'doughnut',
+    data: {
+      labels: AD_SETS.map(a => a.name),
+      datasets: [{
+        data: AD_SETS.map(a => a.impressions),
+        backgroundColor: COLORS,
+        borderWidth: 2,
+        borderColor: '#080A0F',
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position:'bottom', labels:{ color:'#777', font:{family:'Space Mono',size:11}, boxWidth:8, padding:12 } },
+        tooltip: {
+          backgroundColor:'#0D0F14', borderColor:'rgba(255,255,255,0.15)', borderWidth:1,
+          titleColor:'#888', bodyColor:'#ccc',
+          titleFont:{family:'Space Mono',size:12}, bodyFont:{family:'Space Mono',size:13},
+          callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed.toLocaleString()} impr.` }
+        }
+      }
+    }
+  });
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+function renderTable() {
+  document.getElementById('adsetTable').innerHTML = AD_SETS.map((a, i) => {
+    const rCtr  = a.impressions > 0 ? ((a.clicks/a.impressions)*100).toFixed(2) : '0.00';
+    const rCpc  = a.clicks > 0 ? (a.spend/a.clicks).toFixed(2) : '—';
+    const rRoas = a.spend > 0 ? (a.rev/a.spend).toFixed(3) : '0.000';
+    const pColor = a.purchases > 0 ? '#00BFA5' : '#444';
+    return `<tr>
+      <td><div class="td-name"><div class="color-dot" style="background:${COLORS[i]}"></div>${a.name}</div></td>
+      <td style="color:#00E5FF">$${a.spend.toFixed(2)}</td>
+      <td>${a.impressions.toLocaleString()}</td>
+      <td>${a.clicks.toLocaleString()}</td>
+      <td style="color:#FF6D00">${rCtr}%</td>
+      <td>${rCpc !== '—' ? '$'+rCpc : '—'}</td>
+      <td style="color:${pColor}">${a.purchases}</td>
+      <td style="color:${pColor}">${rRoas}×</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Funnel ────────────────────────────────────────────────────────────────────
+function renderFunnel(t) {
+  const steps = [
+    { label:'Reach',             value:t.reach,       color:'#00E5FF' },
+    { label:'Impressions',       value:t.impressions, color:'#7C4DFF' },
+    { label:'Link Clicks',       value:t.clicks,      color:'#00BFA5' },
+    { label:'Landing Page Views',value:t.lpv,         color:'#FF6D00' },
+    { label:'Purchases',         value:t.purchases,   color:'#FF4081' },
+  ];
+  const base = steps[0].value || 1;
+  document.getElementById('funnelBox').innerHTML = steps.map(s => {
+    const pct = ((s.value/base)*100).toFixed(1);
+    return `
+      <div class="funnel-row">
+        <div class="funnel-labels">
+          <span style="color:#888;font-family:'Space Mono',monospace">${s.label}</span>
+          <span style="color:${s.color};font-family:'Space Mono',monospace">
+            ${s.value.toLocaleString()}
+            <span style="color:#444;margin-left:10px">(${pct}%)</span>
+          </span>
+        </div>
+        <div class="funnel-track">
+          <div class="funnel-bar" style="width:${Math.min(pct,100)}%;background:${s.color};box-shadow:0 0 10px ${s.color}55"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Insights ──────────────────────────────────────────────────────────────────
+function renderInsights() {
+  document.getElementById('insightsGrid').innerHTML = INSIGHTS.map(ins => `
+    <div class="insight-card" style="border:1px solid ${ins.color}22;border-left:4px solid ${ins.color}">
+      <div class="insight-icon">${ins.icon}</div>
+      <div class="insight-title" style="color:${ins.color}">${ins.title}</div>
+      <div class="insight-body">${ins.body}</div>
+    </div>
+  `).join('');
+}
+
+// ── Main render ───────────────────────────────────────────────────────────────
+function renderAll() {
+  const rows = filteredData();
+  const t = computeTotals(rows);
+
+  document.getElementById('headerDate').textContent = `${startDate} → ${endDate} · Ad Set Level`;
+  document.getElementById('footerRange').textContent = `${startDate} – ${endDate} · TOTAL SPEND $1,783.22`;
+
+  renderKPIs(t);
+  renderMetricBar();
+  updateTrendChart();
+  renderFunnel(t);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderAdSetCharts();
+renderTable();
+renderInsights();
+renderAll();
+</script>
+</body>
+</html>
