@@ -597,39 +597,61 @@ function renderAdSetCharts() {
   if (pieChart) pieChart.destroy();
 
   const spendCtx = document.getElementById('spendChart').getContext('2d');
-  spendChart = new Chart(spendCtx, {
-    type: 'bar',
-    data: {
-      labels: AD_SETS.map(a => a.name),
-      datasets: [{
-        data: AD_SETS.map(a => a.spend),
-        backgroundColor: COLORS,
-        borderRadius: 5,
-      }]
+ spendChart = new Chart(spendCtx, {
+  type: 'bar',
+  data: {
+    labels: AD_SETS.map(a => a.name),
+    datasets: [{
+      data: AD_SETS.map(a => a.spend),
+      backgroundColor: COLORS,
+      borderRadius: 5,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#0D0F14',
+        borderColor: 'rgba(255,255,255,0.15)',
+        borderWidth: 1,
+        titleColor: '#888',
+        bodyColor: '#00E5FF',
+        titleFont: { family: 'Space Mono', size: 12 },
+        bodyFont: { family: 'Space Mono', size: 13 },
+        callbacks: { label: ctx => `Spend: $${ctx.parsed.x.toFixed(2)}` }
+      }
     },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
 
-      /* This is the main fix: more room for long labels */
-      layout: { padding: { left: 170, right: 12, top: 0, bottom: 0 } },
+    // Important part: keep labels inside canvas so they cannot be clipped
+    scales: {
+      x: {
+        grid: { color: 'rgba(255,255,255,0.04)' },
+        ticks: {
+          color: '#555',
+          font: { family: 'Space Mono', size: 11 },
+          callback: v => `$${v}`
+        }
+      },
+      y: {
+        grid: { display: false },
+        ticks: {
+          color: '#777',
+          font: { family: 'Space Mono', size: 11 },
+          autoSkip: false,
 
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#555',font:{family:'Space Mono',size:11}, callback:v=>`$${v}`} },
-        y: {
-          grid:{display:false},
-          ticks:{
-            color:'#777',
-            font:{family:'Space Mono',size:11},
-            autoSkip:false,
-            padding: 10
-          }
+          // FIX
+          mirror: true,        // draw labels inside the chart area
+          align: 'start',      // left align text inside chart
+          padding: 8
         }
       }
     }
-  });
+  }
+});
 
   const pieCtx = document.getElementById('pieChart').getContext('2d');
   pieChart = new Chart(pieCtx, {
