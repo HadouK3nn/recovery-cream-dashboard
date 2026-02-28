@@ -290,10 +290,12 @@
       <div class="chart-box-label">SPEND BY AD SET</div>
       <canvas id="spendChart" height="160"></canvas>
     </div>
-    <div class="chart-box">
-      <div class="chart-box-label">IMPRESSIONS SHARE</div>
-      <canvas id="pieChart" height="160"></canvas>
-    </div>
+   <div class="chart-box">
+  <div class="chart-box-label">IMPRESSIONS SHARE</div>
+  <div style="height:320px;">
+    <canvas id="pieChart"></canvas>
+  </div>
+</div>
   </div>
 
   <!-- Table -->
@@ -618,7 +620,8 @@ function renderAdSetCharts() {
       }]
     },
     options: {
-      responsive: true,
+  responsive: true,
+  maintainAspectRatio: false,
       plugins: {
         legend: { position:'bottom', labels:{ color:'#777', font:{family:'Space Mono',size:11}, boxWidth:8, padding:12 } },
         tooltip: {
