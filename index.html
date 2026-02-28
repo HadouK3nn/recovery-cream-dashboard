@@ -1,5 +1,3 @@
-can you give me the full updated code? 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -163,12 +161,19 @@ can you give me the full updated code?
     margin-bottom: 18px;
   }
 
+  /* Trend chart height control */
+  .trend-box { height: 260px; }
+  .trend-box canvas { width: 100% !important; height: 100% !important; display: block; }
+
   /* Give more width to spend chart */
   .charts-2col {
     display: grid;
-    grid-template-columns: 1.35fr 0.65fr; /* left wider, right narrower */
+    grid-template-columns: 1.35fr 0.65fr;
     gap: 18px;
   }
+
+  .fixed-320 { height: 320px; }
+  .fixed-320 canvas { width: 100% !important; height: 100% !important; display: block; }
 
   /* Donut fills card better */
   .donut-layout{
@@ -325,8 +330,8 @@ can you give me the full updated code?
 
   <div class="section-title">Daily Performance Trend</div>
   <div class="metric-bar" id="metricBar"></div>
-  <div class="chart-box">
-    <canvas id="trendChart" height="100"></canvas>
+  <div class="chart-box trend-box">
+    <canvas id="trendChart"></canvas>
   </div>
 
   <div class="section-title">Ad Set Breakdown</div>
@@ -334,7 +339,7 @@ can you give me the full updated code?
 
     <div class="chart-box">
       <div class="chart-box-label">SPEND BY AD SET</div>
-      <div style="height:320px;">
+      <div class="fixed-320">
         <canvas id="spendChart"></canvas>
       </div>
     </div>
@@ -384,6 +389,7 @@ can you give me the full updated code?
 </div>
 
 <script>
+// Data
 const DAILY_DATA = [
   { date:"2025-12-27", spend:0.03,   impressions:2,    clicks:0,   reach:2,    lpv:0,  purchases:0, rev:0 },
   { date:"2025-12-29", spend:0.56,   impressions:40,   clicks:8,   reach:35,   lpv:1,  purchases:0, rev:0 },
@@ -444,20 +450,23 @@ const INSIGHTS = [
   { icon:"📅", title:"Spend Paused Feb 4 to 8",  color:"#FF6D00", body:"Zero spend recorded across all ad sets Feb 4 to 8. Confirm with client whether this was intentional or a budget or scheduling issue." },
 ];
 
-let startDate   = MIN_DATE;
-let endDate     = MAX_DATE;
+// State
+let startDate    = MIN_DATE;
+let endDate      = MAX_DATE;
 let activeMetric = "spend";
-let trendChart  = null;
-let spendChart  = null;
-let pieChart    = null;
-let customOpen  = false;
+let trendChart   = null;
+let spendChart   = null;
+let pieChart     = null;
+let customOpen   = false;
 
+// Helpers
 const fmtN = v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : `${Math.round(v)}`;
 const fmtD = v => `$${v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 
 function filteredData() {
   return DAILY_DATA.filter(d => d.date >= startDate && d.date <= endDate);
 }
+
 function computeTotals(rows) {
   return rows.reduce((a,d) => ({
     spend:       a.spend       + d.spend,
@@ -470,15 +479,18 @@ function computeTotals(rows) {
   }), {spend:0,impressions:0,clicks:0,reach:0,lpv:0,purchases:0,rev:0});
 }
 
+// Date preset
 function applyPreset(days) {
   document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active-cyan','active-purple'));
 
   if (days === null) {
-    startDate = MIN_DATE; endDate = MAX_DATE;
+    startDate = MIN_DATE;
+    endDate = MAX_DATE;
     document.getElementById('btn-all').classList.add('active-cyan');
   } else {
     const end = new Date(MAX_DATE + 'T00:00:00');
-    const cut = new Date(end); cut.setDate(cut.getDate() - days + 1);
+    const cut = new Date(end);
+    cut.setDate(cut.getDate() - days + 1);
     const s = cut.toISOString().slice(0,10);
     startDate = s < MIN_DATE ? MIN_DATE : s;
     endDate = MAX_DATE;
@@ -509,6 +521,7 @@ function applyCustom() {
   renderAll();
 }
 
+// KPIs
 function renderKPIs(t) {
   const ctr     = t.impressions > 0 ? ((t.clicks/t.impressions)*100).toFixed(2) : '0.00';
   const cpm     = t.impressions > 0 ? ((t.spend/t.impressions)*1000).toFixed(2) : '0.00';
@@ -537,6 +550,7 @@ function renderKPIs(t) {
   `).join('');
 }
 
+// Metric buttons
 function renderMetricBar() {
   document.getElementById('metricBar').innerHTML = METRICS.map(m => `
     <button class="metric-btn" onclick="selectMetric('${m.key}')"
@@ -551,6 +565,7 @@ function selectMetric(key) {
   updateTrendChart();
 }
 
+// Trend chart helpers
 function buildChartData() {
   const rows = filteredData();
   return rows.map(d => {
@@ -561,6 +576,43 @@ function buildChartData() {
   });
 }
 
+// Hover line plugin for trend chart
+const hoverLinePlugin = {
+  id: 'hoverLinePlugin',
+  afterDraw(chart) {
+    const tooltip = chart.tooltip;
+    if (!tooltip || !tooltip.getActiveElements || tooltip.getActiveElements().length === 0) return;
+
+    const { ctx, chartArea: { top, bottom } } = chart;
+    const active = tooltip.getActiveElements()[0];
+    const x = active.element.x;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+
+// Plugin to widen the y axis label area for spend chart
+const yAxisWidthPlugin = {
+  id: 'yAxisWidthPlugin',
+  afterFit(scale, args, opts) {
+    if (scale.axis !== 'y') return;
+    const w = (opts && opts.width) ? opts.width : 180;
+    if (scale.width < w) scale.width = w;
+  }
+};
+
+// Register plugins once
+Chart.register(hoverLinePlugin);
+Chart.register(yAxisWidthPlugin);
+
+// Trend chart
 function updateTrendChart() {
   const data = buildChartData();
   const m = METRICS.find(x => x.key === activeMetric);
@@ -577,15 +629,40 @@ function updateTrendChart() {
         borderColor: m.color,
         backgroundColor: m.color + '15',
         borderWidth: 2.5,
-        pointRadius: 0,
-        pointHoverRadius: 5,
         tension: 0.3,
         fill: true,
+
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointHoverBorderWidth: 2,
+        pointHoverBorderColor: '#FFFFFF',
+        pointHoverBackgroundColor: m.color,
       }]
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: false } },
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0D0F14',
+          borderColor: 'rgba(255,255,255,0.15)',
+          borderWidth: 1,
+          titleColor: '#888',
+          bodyColor: m.color,
+          titleFont: { family: 'Space Mono', size: 12 },
+          bodyFont:  { family: 'Space Mono', size: 13 },
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              const key = activeMetric.toLowerCase();
+              const isMoney = key.includes('spend') || key.includes('cpm') || key.includes('cpc');
+              return isMoney ? `${m.label}: $${Number(v).toFixed(2)}` : `${m.label}: ${v}`;
+            }
+          }
+        }
+      },
       scales: {
         x: { grid: { color:'rgba(255,255,255,0.04)' }, ticks: { color:'#555', font:{ family:'Space Mono', size:12 } } },
         y: { grid: { color:'rgba(255,255,255,0.04)' }, ticks: { color:'#555', font:{ family:'Space Mono', size:12 } } }
@@ -594,66 +671,62 @@ function updateTrendChart() {
   });
 }
 
+// Ad set charts
 function renderAdSetCharts() {
   if (spendChart) spendChart.destroy();
   if (pieChart) pieChart.destroy();
 
   const spendCtx = document.getElementById('spendChart').getContext('2d');
- spendChart = new Chart(spendCtx, {
-  type: 'bar',
-  data: {
-    labels: AD_SETS.map(a => a.name),
-    datasets: [{
-      data: AD_SETS.map(a => a.spend),
-      backgroundColor: COLORS,
-      borderRadius: 5,
-    }]
-  },
-  options: {
-    indexAxis: 'y',
-    responsive: true,
-    maintainAspectRatio: false,
-
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: '#0D0F14',
-        borderColor: 'rgba(255,255,255,0.15)',
-        borderWidth: 1,
-        titleColor: '#888',
-        bodyColor: '#00E5FF',
-        titleFont: { family: 'Space Mono', size: 12 },
-        bodyFont: { family: 'Space Mono', size: 13 },
-        callbacks: { label: ctx => `Spend: $${ctx.parsed.x.toFixed(2)}` }
-      }
+  spendChart = new Chart(spendCtx, {
+    type: 'bar',
+    data: {
+      labels: AD_SETS.map(a => a.name),
+      datasets: [{
+        data: AD_SETS.map(a => a.spend),
+        backgroundColor: COLORS,
+        borderRadius: 5,
+      }]
     },
-
-    // Important part: keep labels inside canvas so they cannot be clipped
-    scales: {
-      x: {
-        grid: { color: 'rgba(255,255,255,0.04)' },
-        ticks: {
-          color: '#555',
-          font: { family: 'Space Mono', size: 11 },
-          callback: v => `$${v}`
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { left: 6, right: 10, top: 0, bottom: 0 } },
+      plugins: {
+        yAxisWidthPlugin: { width: 190 },
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0D0F14',
+          borderColor: 'rgba(255,255,255,0.15)',
+          borderWidth: 1,
+          titleColor: '#888',
+          bodyColor: '#00E5FF',
+          titleFont: { family: 'Space Mono', size: 12 },
+          bodyFont: { family: 'Space Mono', size: 13 },
+          callbacks: { label: ctx => `Spend: $${ctx.parsed.x.toFixed(2)}` }
         }
       },
-      y: {
-        grid: { display: false },
-        ticks: {
-          color: '#777',
-          font: { family: 'Space Mono', size: 11 },
-          autoSkip: false,
-
-          // FIX
-          mirror: true,        // draw labels inside the chart area
-          align: 'start',      // left align text inside chart
-          padding: 8
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: {
+            color: '#555',
+            font: { family: 'Space Mono', size: 11 },
+            callback: v => `$${v}`
+          }
+        },
+        y: {
+          grid: { display: false },
+          ticks: {
+            color: '#777',
+            font: { family: 'Space Mono', size: 12 },
+            padding: 10,
+            autoSkip: false
+          }
         }
       }
     }
-  }
-});
+  });
 
   const pieCtx = document.getElementById('pieChart').getContext('2d');
   pieChart = new Chart(pieCtx, {
@@ -671,12 +744,9 @@ function renderAdSetCharts() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-
-      /* Bigger and thicker donut */
-      radius: '96%',
-      cutout: '50%', /* smaller hole = thicker ring */
+      radius: '98%',
+      cutout: '45%', /* smaller hole = thicker donut */
       layout: { padding: { top: 6, left: 6, right: 6, bottom: 0 } },
-
       plugins: { legend: { display: false } }
     }
   });
@@ -689,6 +759,7 @@ function renderAdSetCharts() {
   `).join('');
 }
 
+// Table
 function renderTable() {
   document.getElementById('adsetTable').innerHTML = AD_SETS.map((a, i) => {
     const rCtr  = a.impressions > 0 ? ((a.clicks/a.impressions)*100).toFixed(2) : '0.00';
@@ -709,6 +780,7 @@ function renderTable() {
   }).join('');
 }
 
+// Funnel
 function renderFunnel(t) {
   const steps = [
     { label:'Reach',             value:t.reach,       color:'#00E5FF' },
@@ -717,7 +789,6 @@ function renderFunnel(t) {
     { label:'Landing Page Views',value:t.lpv,         color:'#FF6D00' },
     { label:'Purchases',         value:t.purchases,   color:'#FF4081' },
   ];
-
   const base = steps[0].value || 1;
 
   document.getElementById('funnelBox').innerHTML = steps.map(s => {
@@ -738,6 +809,7 @@ function renderFunnel(t) {
   }).join('');
 }
 
+// Insights
 function renderInsights() {
   document.getElementById('insightsGrid').innerHTML = INSIGHTS.map(ins => `
     <div class="insight-card" style="border:1px solid ${ins.color}22;border-left:4px solid ${ins.color}">
@@ -748,6 +820,7 @@ function renderInsights() {
   `).join('');
 }
 
+// Main render
 function renderAll() {
   const rows = filteredData();
   const t = computeTotals(rows);
@@ -761,6 +834,7 @@ function renderAll() {
   renderFunnel(t);
 }
 
+// Init
 renderAdSetCharts();
 renderTable();
 renderInsights();
