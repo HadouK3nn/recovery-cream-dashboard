@@ -160,14 +160,20 @@
     letter-spacing: 2px;
     margin-bottom: 18px;
   }
-  .charts-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+
+  /* Give more width to spend chart */
+  .charts-2col {
+    display: grid;
+    grid-template-columns: 1.35fr 0.65fr; /* left wider, right narrower */
+    gap: 18px;
+  }
 
   /* Donut fills card better */
   .donut-layout{
     display: grid;
     grid-template-rows: 1fr auto;
     gap: 10px;
-    height: 320px; /* controls the full donut card content height */
+    height: 320px;
   }
   .donut-canvas{
     position: relative;
@@ -277,7 +283,6 @@
 
 <body>
 
-<!-- Header -->
 <div class="header">
   <div class="header-left">
     <div class="header-brand">
@@ -292,7 +297,6 @@
 
 <div class="content">
 
-  <!-- Date Range -->
   <div class="section-title">Date Range</div>
   <div class="preset-bar">
     <button class="preset-btn" onclick="applyPreset(7)">Last 7 Days</button>
@@ -314,18 +318,15 @@
     <button class="apply-btn" onclick="applyCustom()">Apply</button>
   </div>
 
-  <!-- KPIs -->
   <div class="section-title">Campaign Summary</div>
   <div class="kpi-grid" id="kpiGrid"></div>
 
-  <!-- Trend Chart -->
   <div class="section-title">Daily Performance Trend</div>
   <div class="metric-bar" id="metricBar"></div>
   <div class="chart-box">
     <canvas id="trendChart" height="100"></canvas>
   </div>
 
-  <!-- Ad Set Charts -->
   <div class="section-title">Ad Set Breakdown</div>
   <div class="charts-2col">
 
@@ -338,7 +339,6 @@
 
     <div class="chart-box">
       <div class="chart-box-label">IMPRESSIONS SHARE</div>
-
       <div class="donut-layout">
         <div class="donut-canvas">
           <canvas id="pieChart"></canvas>
@@ -349,7 +349,6 @@
 
   </div>
 
-  <!-- Table -->
   <div class="section-title">Ad Set Performance Table</div>
   <div class="table-wrap">
     <table>
@@ -369,15 +368,12 @@
     </table>
   </div>
 
-  <!-- Funnel -->
   <div class="section-title">Conversion Funnel</div>
   <div class="funnel-box" id="funnelBox"></div>
 
-  <!-- Insights -->
   <div class="section-title">Strategic Insights</div>
   <div class="insights-grid" id="insightsGrid"></div>
 
-  <!-- Footer -->
   <div class="footer">
     <span>RECOVERY CREAM · META ADS DASHBOARD</span>
     <span id="footerRange"></span>
@@ -386,7 +382,6 @@
 </div>
 
 <script>
-/* Data */
 const DAILY_DATA = [
   { date:"2025-12-27", spend:0.03,   impressions:2,    clicks:0,   reach:2,    lpv:0,  purchases:0, rev:0 },
   { date:"2025-12-29", spend:0.56,   impressions:40,   clicks:8,   reach:35,   lpv:1,  purchases:0, rev:0 },
@@ -439,7 +434,7 @@ const METRICS = [
 ];
 
 const INSIGHTS = [
-  { icon:"🧪", title:"Testing Phase Active",  color:"#7C4DFF", body:"Spend is intentionally front-loaded per Dr. Joe's extended testing strategy. This period is for data collection, not direct returns. Evaluate performance after the full test window closes." },
+  { icon:"🧪", title:"Testing Phase Active",  color:"#7C4DFF", body:"Spend is intentionally front loaded per Dr. Joe's extended testing strategy. This period is for data collection, not direct returns. Evaluate performance after the full test window closes." },
   { icon:"🎯", title:"Top Performing Ad Set", color:"#00BFA5", body:'"Cardio & Endurance" is the only ad set generating purchases (1 purchase, $79.99). Consider shifting more budget here once the test window concludes.' },
   { icon:"📉", title:"Retargeting CTR Gap",   color:"#FF6D00", body:"Retargeting has the lowest CTR (about 1.5%) despite being the 2nd highest spend ($528). A creative refresh or audience refinement is worth evaluating post test." },
   { icon:"💡", title:"CPM Efficiency",        color:"#00E5FF", body:"Blended CPM is competitive. M/F Sports has high impression volume (8,696) but near zero clicks. Review ad creative relevance for this audience." },
@@ -447,7 +442,6 @@ const INSIGHTS = [
   { icon:"📅", title:"Spend Paused Feb 4 to 8",  color:"#FF6D00", body:"Zero spend recorded across all ad sets Feb 4 to 8. Confirm with client whether this was intentional or a budget or scheduling issue." },
 ];
 
-/* State */
 let startDate   = MIN_DATE;
 let endDate     = MAX_DATE;
 let activeMetric = "spend";
@@ -456,14 +450,12 @@ let spendChart  = null;
 let pieChart    = null;
 let customOpen  = false;
 
-/* Helpers */
 const fmtN = v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : `${Math.round(v)}`;
 const fmtD = v => `$${v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 
 function filteredData() {
   return DAILY_DATA.filter(d => d.date >= startDate && d.date <= endDate);
 }
-
 function computeTotals(rows) {
   return rows.reduce((a,d) => ({
     spend:       a.spend       + d.spend,
@@ -476,11 +468,8 @@ function computeTotals(rows) {
   }), {spend:0,impressions:0,clicks:0,reach:0,lpv:0,purchases:0,rev:0});
 }
 
-/* Date preset */
 function applyPreset(days) {
-  document.querySelectorAll('.preset-btn').forEach(b => {
-    b.classList.remove('active-cyan','active-purple');
-  });
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active-cyan','active-purple'));
 
   if (days === null) {
     startDate = MIN_DATE; endDate = MAX_DATE;
@@ -518,7 +507,6 @@ function applyCustom() {
   renderAll();
 }
 
-/* Render KPIs */
 function renderKPIs(t) {
   const ctr     = t.impressions > 0 ? ((t.clicks/t.impressions)*100).toFixed(2) : '0.00';
   const cpm     = t.impressions > 0 ? ((t.spend/t.impressions)*1000).toFixed(2) : '0.00';
@@ -547,10 +535,9 @@ function renderKPIs(t) {
   `).join('');
 }
 
-/* Render metric buttons */
 function renderMetricBar() {
   document.getElementById('metricBar').innerHTML = METRICS.map(m => `
-    <button class="metric-btn" id="mbtn-${m.key}" onclick="selectMetric('${m.key}')"
+    <button class="metric-btn" onclick="selectMetric('${m.key}')"
       style="${activeMetric===m.key ? `background:${m.color}18;border-color:${m.color};color:${m.color}` : ''}"
     >${m.label}</button>
   `).join('');
@@ -562,7 +549,6 @@ function selectMetric(key) {
   updateTrendChart();
 }
 
-/* Trend chart */
 function buildChartData() {
   const rows = filteredData();
   return rows.map(d => {
@@ -597,26 +583,7 @@ function updateTrendChart() {
     },
     options: {
       responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#0D0F14',
-          borderColor: 'rgba(255,255,255,0.15)',
-          borderWidth: 1,
-          titleColor: '#888',
-          bodyColor: m.color,
-          titleFont: { family: 'Space Mono', size: 12 },
-          bodyFont:  { family: 'Space Mono', size: 13 },
-          callbacks: {
-            label: c => {
-              const v = c.parsed.y;
-              const key = activeMetric.toLowerCase();
-              const isMoney = (key.includes('spend') || key.includes('cpm') || key.includes('cpc'));
-              return isMoney ? `${m.label}: $${v.toFixed(2)}` : `${m.label}: ${v}`;
-            }
-          }
-        }
-      },
+      plugins: { legend: { display: false } },
       scales: {
         x: { grid: { color:'rgba(255,255,255,0.04)' }, ticks: { color:'#555', font:{ family:'Space Mono', size:12 } } },
         y: { grid: { color:'rgba(255,255,255,0.04)' }, ticks: { color:'#555', font:{ family:'Space Mono', size:12 } } }
@@ -625,7 +592,6 @@ function updateTrendChart() {
   });
 }
 
-/* Ad set charts */
 function renderAdSetCharts() {
   if (spendChart) spendChart.destroy();
   if (pieChart) pieChart.destroy();
@@ -646,37 +612,18 @@ function renderAdSetCharts() {
       responsive: true,
       maintainAspectRatio: false,
 
-      /* Fix cropped Y labels */
-      layout: { padding: { left: 110, right: 10, top: 0, bottom: 0 } },
+      /* This is the main fix: more room for long labels */
+      layout: { padding: { left: 170, right: 12, top: 0, bottom: 0 } },
 
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#0D0F14',
-          borderColor:'rgba(255,255,255,0.15)',
-          borderWidth:1,
-          titleColor:'#888',
-          bodyColor:'#00E5FF',
-          titleFont:{family:'Space Mono',size:12},
-          bodyFont:{family:'Space Mono',size:13},
-          callbacks: { label: ctx => `Spend: $${ctx.parsed.x.toFixed(2)}` }
-        }
-      },
+      plugins: { legend: { display: false } },
       scales: {
-        x: {
-          grid:{color:'rgba(255,255,255,0.04)'},
-          ticks:{
-            color:'#555',
-            font:{family:'Space Mono',size:11},
-            callback:v=>`$${v}`
-          }
-        },
+        x: { grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#555',font:{family:'Space Mono',size:11}, callback:v=>`$${v}`} },
         y: {
           grid:{display:false},
           ticks:{
             color:'#777',
             font:{family:'Space Mono',size:11},
-            autoSkip: false,
+            autoSkip:false,
             padding: 10
           }
         }
@@ -701,28 +648,15 @@ function renderAdSetCharts() {
       responsive: true,
       maintainAspectRatio: false,
 
-      /* Fill the donut card better */
-      radius: '92%',
-      cutout: '62%',
+      /* Bigger and thicker donut */
+      radius: '96%',
+      cutout: '50%', /* smaller hole = thicker ring */
       layout: { padding: { top: 6, left: 6, right: 6, bottom: 0 } },
 
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor:'#0D0F14',
-          borderColor:'rgba(255,255,255,0.15)',
-          borderWidth:1,
-          titleColor:'#888',
-          bodyColor:'#ccc',
-          titleFont:{family:'Space Mono',size:12},
-          bodyFont:{family:'Space Mono',size:13},
-          callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed.toLocaleString()} impr.` }
-        }
-      }
+      plugins: { legend: { display: false } }
     }
   });
 
-  /* Custom legend (does not steal chart space) */
   document.getElementById('pieLegend').innerHTML = AD_SETS.map((a,i)=>`
     <div class="item">
       <span class="swatch" style="background:${COLORS[i]}"></span>
@@ -731,7 +665,6 @@ function renderAdSetCharts() {
   `).join('');
 }
 
-/* Table */
 function renderTable() {
   document.getElementById('adsetTable').innerHTML = AD_SETS.map((a, i) => {
     const rCtr  = a.impressions > 0 ? ((a.clicks/a.impressions)*100).toFixed(2) : '0.00';
@@ -752,7 +685,6 @@ function renderTable() {
   }).join('');
 }
 
-/* Funnel */
 function renderFunnel(t) {
   const steps = [
     { label:'Reach',             value:t.reach,       color:'#00E5FF' },
@@ -782,7 +714,6 @@ function renderFunnel(t) {
   }).join('');
 }
 
-/* Insights */
 function renderInsights() {
   document.getElementById('insightsGrid').innerHTML = INSIGHTS.map(ins => `
     <div class="insight-card" style="border:1px solid ${ins.color}22;border-left:4px solid ${ins.color}">
@@ -793,7 +724,6 @@ function renderInsights() {
   `).join('');
 }
 
-/* Main render */
 function renderAll() {
   const rows = filteredData();
   const t = computeTotals(rows);
@@ -807,12 +737,10 @@ function renderAll() {
   renderFunnel(t);
 }
 
-/* Init */
 renderAdSetCharts();
 renderTable();
 renderInsights();
 renderAll();
 </script>
-
 </body>
 </html>
