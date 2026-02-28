@@ -143,7 +143,6 @@
     font-family: 'Space Mono', monospace;
   }
 
-  /* ── Trend chart: fixed shorter height ── */
   .chart-box {
     background: rgba(255,255,255,0.02);
     border: 1px solid rgba(255,255,255,0.06);
@@ -152,7 +151,7 @@
   }
   .trend-canvas-wrap {
     position: relative;
-    height: 180px;   /* shorter than default */
+    height: 180px;
   }
   .trend-canvas-wrap canvas {
     width: 100% !important;
@@ -336,6 +335,7 @@
         <canvas id="spendChart"></canvas>
       </div>
     </div>
+
     <div class="chart-box">
       <div class="chart-box-label">IMPRESSIONS SHARE</div>
       <div class="donut-layout">
@@ -584,10 +584,7 @@ function updateTrendChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      interaction: {
-        mode: 'index',       /* snap to nearest x-axis column */
-        intersect: false,    /* trigger even when not directly on a point */
-      },
+      interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -613,14 +610,8 @@ function updateTrendChart() {
         }
       },
       scales: {
-        x: {
-          grid: { color:'rgba(255,255,255,0.04)' },
-          ticks: { color:'#555', font:{ family:'Space Mono', size:12 } }
-        },
-        y: {
-          grid: { color:'rgba(255,255,255,0.04)' },
-          ticks: { color:'#555', font:{ family:'Space Mono', size:12 } }
-        }
+        x: { grid: { color:'rgba(255,255,255,0.04)' }, ticks: { color:'#555', font:{ family:'Space Mono', size:12 } } },
+        y: { grid: { color:'rgba(255,255,255,0.04)' }, ticks: { color:'#555', font:{ family:'Space Mono', size:12 } } }
       }
     }
   });
@@ -644,15 +635,32 @@ function renderAdSetCharts() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#0D0F14', borderColor:'rgba(255,255,255,0.15)', borderWidth:1,
-          titleColor:'#888', bodyColor:'#00E5FF',
-          titleFont:{family:'Space Mono',size:12}, bodyFont:{family:'Space Mono',size:13},
+          backgroundColor: '#0D0F14',
+          borderColor:'rgba(255,255,255,0.15)',
+          borderWidth:1,
+          titleColor:'#888',
+          bodyColor:'#00E5FF',
+          titleFont:{ family:'Space Mono', size:12 },
+          bodyFont:{ family:'Space Mono', size:13 },
           callbacks: { label: ctx => `Spend: $${ctx.parsed.x.toFixed(2)}` }
         }
       },
       scales: {
-        x: { grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#555',font:{family:'Space Mono',size:11},callback:v=>`$${v}`} },
-        y: { grid:{display:false}, ticks:{color:'#777',font:{family:'Space Mono',size:11},mirror:true,align:'start',padding:8} }
+        x: {
+          grid:{ color:'rgba(255,255,255,0.04)' },
+          ticks:{ color:'#555', font:{ family:'Space Mono', size:11 }, callback:v=>`$${v}` }
+        },
+        y: {
+          grid:{ display:false },
+          afterFit: (scale) => { scale.width = 220; },
+          ticks:{
+            color:'#777',
+            font:{ family:'Space Mono', size:11 },
+            autoSkip:false,
+            padding: 12,
+            mirror:false
+          }
+        }
       }
     }
   });
